@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Win2D (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Win2D (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
