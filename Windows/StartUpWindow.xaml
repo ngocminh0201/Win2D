@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Window
-    x:Class="Win2D.MainWindow"
+    x:Class="Win2D.Windows.StartUpWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="using:Win2D"
+    xmlns:local="using:Win2D.Windows"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Title="Win2D"
+    Title="StartUpWindow"
     mc:Ignorable="d">
 
     <Window.SystemBackdrop>
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <StackPanel
-        HorizontalAlignment="Center"
-        VerticalAlignment="Center"
-        Orientation="Vertical">
-        <Button Click="Button_Click" Content="StartUp" />
-    </StackPanel>
+    <Grid>
+        <canvas:CanvasControl
+            x:Name="Canvas"
+            CreateResources="Canvas_CreateResources"
+            Draw="Canvas_Draw" />
+    </Grid>
 </Window>
