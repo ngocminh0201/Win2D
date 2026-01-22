@@ -17,7 +17,12 @@
     <StackPanel
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
-        Orientation="Vertical">
+        Orientation="Vertical"
+        Spacing="15">
         <Button Click="Button_Click" Content="StartUp" />
+        <Button Click="Button_Click_1" Content="Primitive shapes" />
+        <Button Click="Button_Click_2" Content="Gradient" />
+        <Button Click="Button_Click_4" Content="Clipping and Masking" />
+        <Button Click="Button_Click_3" Content="BattleTank Game" />
     </StackPanel>
 </Window>
