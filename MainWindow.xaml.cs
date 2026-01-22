@@ -45,5 +45,11 @@ namespace Win2D
             var window = new Windows.ClippingWindow();
             window.Activate();
         }
+
+        private void Button_Click_5(object sender, RoutedEventArgs e)
+        {
+            var window = new ProgresCircle.ProgressCircle();
+            window.Activate();
+        }
     }
 }

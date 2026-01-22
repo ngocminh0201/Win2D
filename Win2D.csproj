@@ -13,6 +13,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="Assets\ProgressFrames.jpg" />
+    <None Remove="ProgresCircle\ProgressCircle.xaml" />
     <None Remove="Windows\ClippingWindow.xaml" />
     <None Remove="Windows\GradientWindow.xaml" />
     <None Remove="Windows\PrimitiveShapesWindow.xaml" />
@@ -48,6 +50,11 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260101001" />
   </ItemGroup>
   <ItemGroup>
+    <Content Update="Assets\ProgressFrames.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
     <Page Update="Windows\ClippingWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -64,6 +71,11 @@
   </ItemGroup>
   <ItemGroup>
     <Page Update="Windows\StartUpWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="ProgresCircle\ProgressCircle.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
