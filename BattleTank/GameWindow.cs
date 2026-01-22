@@ -1,11 +1,10 @@
-﻿using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
 using System;
 using System.Diagnostics;
 using System.Numerics;
@@ -25,6 +24,7 @@ namespace Win2D.BattleTank
         private readonly TextBlock _scoreText = new();
         private readonly TextBlock _livesText = new();
         private readonly TextBlock _levelText = new();
+        private readonly TextBlock _remainingText = new();
         private readonly TextBlock _fpsText = new();
 
         private CanvasDevice? _device;
@@ -76,19 +76,21 @@ namespace Win2D.BattleTank
 
             // HUD bar
             _hud.Background = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0));
-            _hud.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            _hud.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            _hud.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            _hud.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            // 5 columns: Score | Lives | Level | Remaining | FPS
+            for (int i = 0; i < 5; i++)
+                _hud.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
             SetupHudText(_scoreText, "Score: 0", 0);
             SetupHudText(_livesText, "Lives: 3", 1);
-            SetupHudText(_levelText, "Level: 1", 2);
-            SetupHudText(_fpsText, "FPS: --", 3);
+            SetupHudText(_levelText, "Level: 1/3", 2);
+            SetupHudText(_remainingText, "Tank còn lại: 10/10", 3);
+            SetupHudText(_fpsText, "FPS: --", 4);
 
             _hud.Children.Add(_scoreText);
             _hud.Children.Add(_livesText);
             _hud.Children.Add(_levelText);
+            _hud.Children.Add(_remainingText);
             _hud.Children.Add(_fpsText);
 
             Grid.SetRow(_hud, 0);
@@ -151,14 +153,13 @@ namespace Win2D.BattleTank
             _swapChainPanel.SizeChanged += (_, __) => EnsureSwapChain();
         }
 
-
         private void OnKeyDown(object sender, KeyRoutedEventArgs e)
         {
             _input.OnKeyDown(e.Key);
 
             // One-shot keys
             if (e.Key == VirtualKey.Escape) _engine.TogglePause();
-            if (e.Key == VirtualKey.Enter) _engine.TryRestartIfGameOver();
+            if (e.Key == VirtualKey.Enter) _engine.HandleEnter();
 
             e.Handled = true;
         }
@@ -188,8 +189,6 @@ namespace Win2D.BattleTank
             }
 
             // Resize in DIPs (Win2D doc)
-            // ResizeBuffers(Size) is in DIPs. :contentReference[oaicite:3]{index=3}
-            // Use overload to also update DPI when needed.
             if (MathF.Abs(_swapChain.SizeInPixels.Width / (_swapChain.Dpi / 96f) - w) > 1.0f ||
                 MathF.Abs(_swapChain.SizeInPixels.Height / (_swapChain.Dpi / 96f) - h) > 1.0f ||
                 MathF.Abs(_swapChain.Dpi - dpi) > 0.5f)
@@ -225,7 +224,7 @@ namespace Win2D.BattleTank
                 _engine.Render(ds, _swapChain.Size.ToVector2());
             }
 
-            // vsync present (syncInterval=1).  :contentReference[oaicite:4]{index=4}
+            // vsync present (syncInterval=1)
             _swapChain.Present(1);
 
             UpdateHud(dt);
@@ -244,7 +243,8 @@ namespace Win2D.BattleTank
 
                 _scoreText.Text = $"Score: {_engine.Score}";
                 _livesText.Text = $"Lives: {_engine.Lives}";
-                _levelText.Text = $"Level: {_engine.Level}";
+                _levelText.Text = $"Level: {_engine.Level}/3";
+                _remainingText.Text = $"Tank còn lại: {_engine.RemainingToWin}/{_engine.KillGoalPerLevel}";
 
                 _fpsAccum = 0;
                 _fpsFrames = 0;

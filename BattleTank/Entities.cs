@@ -1,4 +1,4 @@
-﻿using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas;
 using Microsoft.UI;
 using System;
 using System.Numerics;
@@ -29,6 +29,34 @@ namespace Win2D.BattleTank
         }
     }
 
+    public static class EnemyColors
+    {
+        // Brighter + varied, but still "tank-like".
+        public static readonly Color[] Palette =
+        {
+            Color.FromArgb(255, 235,  90,  90), // red
+            Color.FromArgb(255, 255, 165,  70), // orange
+            Color.FromArgb(255, 255, 235,  90), // yellow
+            Color.FromArgb(255,  90, 220, 120), // green
+            Color.FromArgb(255,  80, 210, 255), // cyan
+            Color.FromArgb(255, 120, 150, 255), // blue
+            Color.FromArgb(255, 190, 120, 255), // purple
+            Color.FromArgb(255, 255, 120, 210), // pink
+        };
+
+        public static Color Pick(Random rng) => Palette[rng.Next(Palette.Length)];
+
+        public static Color AccentFor(Color body)
+        {
+            // A soft bright accent that reads well on dark bg.
+            // (not too white to keep "material" look)
+            byte r = (byte)Math.Min(255, body.R + 55);
+            byte g = (byte)Math.Min(255, body.G + 55);
+            byte b = (byte)Math.Min(255, body.B + 55);
+            return Color.FromArgb(220, r, g, b);
+        }
+    }
+
     public struct Tank
     {
         public static float Size => 22f;
@@ -48,6 +76,10 @@ namespace Win2D.BattleTank
         public float Speed;
         public float ShootCooldown;
 
+        // cosmetics
+        public Color BodyColor;
+        public Color AccentColor;
+
         // AI
         public float AiTimer;
         public float FireTimer;
@@ -65,6 +97,8 @@ namespace Win2D.BattleTank
             Dir = TankDir.Up,
             Speed = 120f,
             ShootCooldown = 0,
+            BodyColor = Color.FromArgb(255, 60, 210, 110),
+            AccentColor = Color.FromArgb(220, 210, 255, 230),
             AiTimer = 0,
             FireTimer = 0
         };
@@ -79,6 +113,9 @@ namespace Win2D.BattleTank
             Dir = TankDir.Down,
             Speed = 90f,
             ShootCooldown = 0,
+            // Will be overridden at spawn for variety
+            BodyColor = Color.FromArgb(255, 235, 90, 90),
+            AccentColor = Color.FromArgb(220, 255, 255, 255),
             AiTimer = 0.4f,
             FireTimer = 0.8f
         };
@@ -112,7 +149,8 @@ namespace Win2D.BattleTank
         {
             var r = Bounds;
 
-            var body = IsPlayer ? Color.FromArgb(255, 60, 210, 110) : Color.FromArgb(255, 235, 90, 90);
+            var body = BodyColor;
+            var accent = AccentColor.A == 0 ? Color.FromArgb(220, 255, 255, 255) : AccentColor;
             var outline = Color.FromArgb(180, 0, 0, 0);
 
             ds.FillRoundedRectangle(r.X, r.Y, r.W, r.H, 4, 4, body);
@@ -126,7 +164,7 @@ namespace Win2D.BattleTank
             ds.DrawLine(basep, muzzle, Colors.Black, 4);
 
             // direction mark
-            ds.FillCircle(Pos + forward * 6f, 2.2f, Color.FromArgb(220, 255, 255, 255));
+            ds.FillCircle(Pos + forward * 6f, 2.2f, accent);
         }
     }
 

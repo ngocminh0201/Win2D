@@ -1,7 +1,10 @@
-﻿using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas;
 using Microsoft.UI;
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Numerics;
+using System.Text;
 using Windows.UI;
 
 namespace Win2D.BattleTank
@@ -25,31 +28,215 @@ namespace Win2D.BattleTank
             _tiles = new Tile[width * height];
         }
 
-        public void LoadLevel1()
+        // ========= LEVELS =========
+
+        public void LoadLevel(int level)
         {
-            // 26x26 (vừa “retro”, vừa đủ chỗ né)
-            // '.' empty, 'B' brick, 'S' steel, 'W' water, 'T' trees(bush), 'I' ice, 'E' base
-            string[] rows = Level1Layout.Rows;
-            if (rows.Length != Height) throw new InvalidOperationException("Layout height mismatch");
+            ClearAll();
+
+            // Solid steel border for clean bounds + classic feel
+            for (int x = 0; x < Width; x++)
+            {
+                Set(x, 0, Tile.Steel());
+                Set(x, Height - 1, Tile.Steel());
+            }
             for (int y = 0; y < Height; y++)
             {
-                if (rows[y].Length != Width) throw new InvalidOperationException("Layout width mismatch");
-                for (int x = 0; x < Width; x++)
+                Set(0, y, Tile.Steel());
+                Set(Width - 1, y, Tile.Steel());
+            }
+
+            // Base + guard bricks
+            PlaceBase();
+
+            // Text content per level
+            if (level == 1)
+            {
+                PlaceTextAsBricks("3636", scale: 2, spacing: 1, yTop: 5);
+                PlaceDecorLevel1();
+            }
+            else if (level == 2)
+            {
+                PlaceTextAsBricks("THANH HOÁ", scale: 1, spacing: 0, yTop: 9);
+                PlaceDecorLevel2();
+            }
+            else // level 3
+            {
+                PlaceTextAsBricks("3636", scale: 2, spacing: 1, yTop: 5);
+                PlaceDecorLevel3();
+            }
+
+            // Make sure spawn zones are free
+            CarveSpawnZones();
+        }
+
+        private void ClearAll()
+        {
+            for (int i = 0; i < _tiles.Length; i++) _tiles[i] = Tile.Empty();
+        }
+
+        private void Set(int x, int y, Tile t)
+        {
+            if ((uint)x >= (uint)Width || (uint)y >= (uint)Height) return;
+            _tiles[y * Width + x] = t;
+        }
+
+        private Tile Get(int x, int y) => _tiles[y * Width + x];
+
+        private RectF TileRect(int x, int y) => new(x * TileSize, y * TileSize, TileSize, TileSize);
+
+        private void PlaceBase()
+        {
+            // Put base near bottom center (classic)
+            int bx = Width / 2;
+            int by = Height - 2;
+
+            // Clear area
+            for (int y = by - 2; y <= by + 1; y++)
+                for (int x = bx - 2; x <= bx + 2; x++)
+                    Set(x, y, Tile.Empty());
+
+            // Guard bricks ring, base in center
+            for (int y = by - 1; y <= by + 1; y++)
+            {
+                for (int x = bx - 1; x <= bx + 1; x++)
                 {
-                    char c = rows[y][x];
-                    _tiles[y * Width + x] = c switch
-                    {
-                        'B' => Tile.BrickFull(),
-                        'S' => Tile.Steel(),
-                        'W' => Tile.Water(),
-                        'T' => Tile.Bush(),
-                        'I' => Tile.Ice(),
-                        'E' => Tile.Base(),
-                        _ => Tile.Empty(),
-                    };
+                    if (x == bx && y == by) continue;
+                    Set(x, y, Tile.BrickFull());
+                }
+            }
+
+            Set(bx, by, Tile.Base());
+        }
+
+        private void CarveSpawnZones()
+        {
+            // Enemy spawn tiles (match GameEngine)
+            // (2,2), (mid,2), (w-2,2)
+            int mid = Width / 2;
+            CarveCircle(2, 2, 2);
+            CarveCircle(mid, 2, 2);
+            CarveCircle(Width - 2, 2, 2);
+
+            // Player spawn (match GameEngine: x=Width/2, y=Height-1)
+            CarveCircle(Width / 2, Height - 1, 2);
+        }
+
+        private void CarveCircle(int cx, int cy, int r)
+        {
+            for (int y = cy - r; y <= cy + r; y++)
+                for (int x = cx - r; x <= cx + r; x++)
+                {
+                    if ((uint)x >= (uint)Width || (uint)y >= (uint)Height) continue;
+                    int dx = x - cx, dy = y - cy;
+                    if (dx * dx + dy * dy <= r * r)
+                        Set(x, y, Tile.Empty());
+                }
+        }
+
+        private void PlaceDecorLevel1()
+        {
+            // Some water lanes + steel pillars (deterministic, no RNG)
+            for (int x = 6; x < Width - 6; x += 6)
+            {
+                Set(x, 12, Tile.Water());
+                Set(x, 13, Tile.Water());
+            }
+
+            for (int y = 6; y < Height - 8; y += 5)
+            {
+                Set(10, y, Tile.Steel());
+                Set(Width - 11, y, Tile.Steel());
+            }
+
+            // Bush patches
+            for (int x = 4; x < Width - 4; x += 8)
+            {
+                Set(x, 18, Tile.Bush());
+                Set(x + 1, 18, Tile.Bush());
+            }
+        }
+
+        private void PlaceDecorLevel2()
+        {
+            // Ice band (makes movement spicy but still readable)
+            for (int x = 3; x < Width - 3; x++)
+            {
+                if (x % 2 == 0) Set(x, 15, Tile.Ice());
+            }
+
+            // Brick blocks as cover
+            for (int y = 5; y < 12; y += 3)
+            {
+                for (int x = 6; x < Width - 6; x += 10)
+                {
+                    Set(x, y, Tile.BrickFull());
+                    Set(x + 1, y, Tile.BrickFull());
+                    Set(x, y + 1, Tile.BrickFull());
                 }
             }
         }
+
+        private void PlaceDecorLevel3()
+        {
+            // More "maze-like" pillars
+            for (int y = 4; y < Height - 6; y++)
+            {
+                if (y % 2 == 0)
+                {
+                    Set(8, y, Tile.BrickFull());
+                    Set(Width - 9, y, Tile.BrickFull());
+                }
+            }
+
+            // Water pools
+            for (int y = 10; y <= 13; y++)
+                for (int x = 22; x <= 27; x++)
+                    if ((x + y) % 2 == 0) Set(x, y, Tile.Water());
+        }
+
+        private void PlaceTextAsBricks(string text, int scale, int spacing, int yTop)
+        {
+            string norm = TextRaster.Normalize(text);
+
+            // Compute width in tiles
+            int charW = TextRaster.CharWidth;
+            int charH = TextRaster.CharHeight;
+
+            int glyphCount = norm.Length;
+            int totalPxW = glyphCount * charW + Math.Max(0, glyphCount - 1) * spacing;
+            int totalW = totalPxW * scale;
+            int totalH = charH * scale;
+
+            int startX = Math.Max(1, (Width - totalW) / 2);
+            int startY = Math.Clamp(yTop, 1, Height - totalH - 2);
+
+            int cursor = 0;
+            for (int i = 0; i < norm.Length; i++)
+            {
+                char ch = norm[i];
+                var glyph = TextRaster.GetGlyph(ch);
+
+                for (int gy = 0; gy < charH; gy++)
+                {
+                    for (int gx = 0; gx < charW; gx++)
+                    {
+                        if (!glyph[gy, gx]) continue;
+
+                        int px = startX + (cursor + gx) * scale;
+                        int py = startY + gy * scale;
+
+                        for (int sy = 0; sy < scale; sy++)
+                            for (int sx = 0; sx < scale; sx++)
+                                Set(px + sx, py + sy, Tile.BrickFull());
+                    }
+                }
+
+                cursor += charW + spacing;
+            }
+        }
+
+        // ========= COLLISION =========
 
         public bool IsRectBlocked(RectF r)
         {
@@ -162,6 +349,8 @@ namespace Win2D.BattleTank
             return true;
         }
 
+        // ========= DRAW =========
+
         public void Draw(CanvasDrawingSession ds, float time)
         {
             // map background
@@ -223,10 +412,6 @@ namespace Win2D.BattleTank
             ds.DrawRectangle(0, 0, WorldSize.X, WorldSize.Y, Color.FromArgb(160, 0, 0, 0), 3);
         }
 
-        private Tile Get(int x, int y) => _tiles[y * Width + x];
-
-        private RectF TileRect(int x, int y) => new(x * TileSize, y * TileSize, TileSize, TileSize);
-
         private static int Clamp(int v, int lo, int hi) => v < lo ? lo : (v > hi ? hi : v);
     }
 
@@ -255,7 +440,7 @@ namespace Win2D.BattleTank
             float oy = y * ts;
 
             // TL, TR, BL, BR
-            var list = new System.Collections.Generic.List<RectF>(4);
+            var list = new List<RectF>(4);
             if ((BrickMask & 1) != 0) list.Add(new RectF(ox, oy, hx, hy));
             if ((BrickMask & 2) != 0) list.Add(new RectF(ox + hx, oy, hx, hy));
             if ((BrickMask & 4) != 0) list.Add(new RectF(ox, oy + hy, hx, hy));
@@ -264,37 +449,142 @@ namespace Win2D.BattleTank
         }
     }
 
-    file static class Level1Layout
+    file static class TextRaster
     {
-        public static readonly string[] Rows =
-        {
-        "....................S........S....................",
-        ".S....BBBB....BBBB...........BBBB....BBBB....S....",
-        ".....B..B.....S....B..B.....S.....B..B.....S......",
-        "..BBBB....BBBB..............BBBB....BBBB....BBBB..",
-        "....W..W....TTTT....W..W....TTTT....W..W....TTTT..",
-        "....W..W....T..T....W..W....T..T....W..W....T..T..",
-        "....W..W....TTTT....W..W....TTTT....W..W....TTTT..",
-        "..........IIII..........IIII..........IIII........",
-        "..B.B.B........BBBBBBBB........BBBBBBBB........B..",
-        "..B...B........B....S.B........B.S....B........B..",
-        "..B.B.B........BBBBBBBB........BBBBBBBB........B..",
-        "........S..................S..................S...",
-        ".....BBBB.....WWWWWW..............WWWWWW.....BBBB.",
-        ".....B..B.....W....W....BBBBBB....W....W.....B..B.",
-        ".....B..B.....W....W....B....B....W....W.....B..B.",
-        ".....BBBB.....WWWWWW....B....B....WWWWWW.....BBBB.",
-        "..........TTTT..........TTTT..........TTTT........",
-        "..S....B....B....S....B....B....S....B....B....S..",
-        "..S....B....B....S....B....B....S....B....B....S..",
-        "........BBBBBBBB..............BBBBBBBB............",
-        "....I..I..I..I....S....I..I..I..I....S....I..I..I.",
-        "....I..I..I..I....S....I..I..I..I....S....I..I..I.",
-        "......BBBB....BBBB..............BBBB....BBBB......",
-        "....................BBBBB.........................",
-        "....................BBEBB.........................",
-        "....................BBBBB.........................",
-    };
-    }
+        public const int CharWidth = 5;
+        public const int CharHeight = 7;
 
+        // Return a 7x5 bool glyph.
+        public static bool[,] GetGlyph(char c)
+        {
+            if (!_glyphs.TryGetValue(c, out var rows))
+                rows = _glyphs['?'];
+
+            var g = new bool[CharHeight, CharWidth];
+            for (int y = 0; y < CharHeight; y++)
+                for (int x = 0; x < CharWidth; x++)
+                    g[y, x] = rows[y][x] == '#';
+            return g;
+        }
+
+        public static string Normalize(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return "";
+
+            // Remove diacritics (e.g., HOÁ -> HOA)
+            string formD = s.Normalize(NormalizationForm.FormD);
+            var sb = new StringBuilder(formD.Length);
+
+            foreach (var ch in formD)
+            {
+                var uc = CharUnicodeInfo.GetUnicodeCategory(ch);
+                if (uc == UnicodeCategory.NonSpacingMark) continue;
+
+                char up = char.ToUpperInvariant(ch);
+                if (up == 'Đ') up = 'D';
+                sb.Append(up);
+            }
+
+            return sb.ToString();
+        }
+
+        private static readonly Dictionary<char, string[]> _glyphs = new()
+        {
+            // digits
+            ['3'] = new[]
+            {
+                "#####",
+                "....#",
+                "....#",
+                "#####",
+                "....#",
+                "....#",
+                "#####",
+            },
+            ['6'] = new[]
+            {
+                "#####",
+                "#....",
+                "#....",
+                "#####",
+                "#...#",
+                "#...#",
+                "#####",
+            },
+
+            // letters used in "THANH HOA"
+            ['T'] = new[]
+            {
+                "#####",
+                "..#..",
+                "..#..",
+                "..#..",
+                "..#..",
+                "..#..",
+                "..#..",
+            },
+            ['H'] = new[]
+            {
+                "#...#",
+                "#...#",
+                "#...#",
+                "#####",
+                "#...#",
+                "#...#",
+                "#...#",
+            },
+            ['A'] = new[]
+            {
+                ".###.",
+                "#...#",
+                "#...#",
+                "#####",
+                "#...#",
+                "#...#",
+                "#...#",
+            },
+            ['N'] = new[]
+            {
+                "#...#",
+                "##..#",
+                "#.#.#",
+                "#..##",
+                "#...#",
+                "#...#",
+                "#...#",
+            },
+            ['O'] = new[]
+            {
+                ".###.",
+                "#...#",
+                "#...#",
+                "#...#",
+                "#...#",
+                "#...#",
+                ".###.",
+            },
+
+            [' '] = new[]
+            {
+                ".....",
+                ".....",
+                ".....",
+                ".....",
+                ".....",
+                ".....",
+                ".....",
+            },
+
+            ['?'] = new[]
+            {
+                "#####",
+                "....#",
+                "...#.",
+                "..#..",
+                "..#..",
+                ".....",
+                "..#..",
+            },
+        };
+    }
 }

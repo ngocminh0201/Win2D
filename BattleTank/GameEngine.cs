@@ -1,9 +1,8 @@
-﻿using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas;
 using Microsoft.UI;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Threading.Tasks;
 using Windows.UI;
 
 namespace Win2D.BattleTank
@@ -15,11 +14,25 @@ namespace Win2D.BattleTank
         public int Lives { get; private set; } = 3;
         public int Score { get; private set; } = 0;
 
+        // New rule: kill 10 enemies to win a level
+        public int KillGoalPerLevel => KillGoal;
+        public int KillsThisLevel => _killsThisLevel;
+        public int RemainingToWin => Math.Max(0, KillGoal - _killsThisLevel);
+
         public bool Paused => _paused;
         public bool GameOver => _gameOver;
+        public bool LevelWon => _levelWon;
+        public bool GameCleared => _gameCleared;
 
         private bool _paused;
         private bool _gameOver;
+        private bool _levelWon;
+        private bool _gameCleared;
+
+        private const int TotalLevels = 3;
+        private const int KillGoal = 10;
+
+        private int _killsThisLevel;
 
         private readonly Random _rng = new(1234);
 
@@ -32,7 +45,7 @@ namespace Win2D.BattleTank
         private Tank _player = default!;
 
         // Enemy flow
-        private int _enemiesRemaining = 20;
+        private int _enemiesRemainingToSpawn = KillGoal;
         private float _enemySpawnTimer;
         private readonly Vector2[] _enemySpawns;
 
@@ -45,10 +58,10 @@ namespace Win2D.BattleTank
             float ts = _map.TileSize;
             _enemySpawns = new[]
             {
-            new Vector2(ts * 2.0f, ts * 2.0f),
-            new Vector2(ts * (_map.Width / 2f), ts * 2.0f),
-            new Vector2(ts * (_map.Width - 2.0f), ts * 2.0f),
-        };
+                new Vector2(ts * 2.0f, ts * 2.0f),
+                new Vector2(ts * (_map.Width / 2f), ts * 2.0f),
+                new Vector2(ts * (_map.Width - 2.0f), ts * 2.0f),
+            };
         }
 
         public void ResetToLevel1()
@@ -59,35 +72,46 @@ namespace Win2D.BattleTank
 
             _paused = false;
             _gameOver = false;
+            _levelWon = false;
+            _gameCleared = false;
 
-            _bullets.Clear();
-            _fx.Clear();
-            _tanks.Clear();
-
-            _map.LoadLevel1();
-
-            float ts = _map.TileSize;
-
-            // Spawn ở gần đáy, lệch phải 1 ô so với base để bắn lên không cắt vào base
-            float spawnX = ts * (_map.Width / 2f + 0.5f);  // 13.5 tiles => tâm ô cột 13
-            float spawnY = _map.WorldSize.Y - ts * 0.5f;   // sát đáy nhưng không chạm biên
-
-            _player = Tank.CreatePlayer(new Vector2(spawnX, spawnY));
-            _tanks.Add(_player);   // <-- thiếu dòng này nên player biến mất
-
-            _enemiesRemaining = 20;
-            _enemySpawnTimer = 0.6f;
+            LoadLevel(Level, resetTransient: true);
         }
 
         public void TogglePause()
         {
-            if (_gameOver) return;
+            if (_gameOver || _levelWon || _gameCleared) return;
             _paused = !_paused;
         }
 
-        public void TryRestartIfGameOver()
+        /// <summary>
+        /// Enter key behavior:
+        /// - If GameOver: restart from Level 1
+        /// - If LevelWon: advance to next level (or finish game)
+        /// - If GameCleared: restart from Level 1
+        /// </summary>
+        public void HandleEnter()
         {
-            if (_gameOver) ResetToLevel1();
+            if (_gameOver || _gameCleared)
+            {
+                ResetToLevel1();
+                return;
+            }
+
+            if (_levelWon)
+            {
+                if (Level < TotalLevels)
+                {
+                    Level++;
+                    LoadLevel(Level, resetTransient: true);
+                }
+                else
+                {
+                    // All clear
+                    _levelWon = false;
+                    _gameCleared = true;
+                }
+            }
         }
 
         public void Update(float dt, InputState input)
@@ -96,6 +120,8 @@ namespace Win2D.BattleTank
 
             if (_paused) return;
             if (_gameOver) return;
+            if (_levelWon) return;
+            if (_gameCleared) return;
 
             SpawnEnemies(dt);
 
@@ -198,6 +224,14 @@ namespace Win2D.BattleTank
                         else
                         {
                             Score += 100;
+
+                            // NEW: win condition
+                            _killsThisLevel++;
+                            if (_killsThisLevel >= KillGoal)
+                            {
+                                _levelWon = true;
+                                _enemiesRemainingToSpawn = 0; // stop spawning
+                            }
                         }
                         break;
                     }
@@ -219,8 +253,40 @@ namespace Win2D.BattleTank
             _tanks.RemoveAll(t => !t.Alive && !t.IsPlayer);
         }
 
+        private void LoadLevel(int level, bool resetTransient)
+        {
+            if (resetTransient)
+            {
+                _bullets.Clear();
+                _fx.Clear();
+
+                // Keep player in list but we rebuild all tanks cleanly for each level
+                _tanks.Clear();
+            }
+
+            _map.LoadLevel(level);
+
+            _killsThisLevel = 0;
+            _levelWon = false;
+            _gameOver = false;
+
+            float ts = _map.TileSize;
+
+            // Spawn near bottom, slightly right of base (avoid immediate base line)
+            float spawnX = ts * (_map.Width / 2f + 0.5f);
+            float spawnY = _map.WorldSize.Y - ts * 0.5f;
+
+            _player = Tank.CreatePlayer(new Vector2(spawnX, spawnY));
+            _tanks.Add(_player);
+
+            _enemiesRemainingToSpawn = KillGoal;
+            _enemySpawnTimer = 0.55f;
+        }
+
         private void SpawnEnemies(float dt)
         {
+            if (_enemiesRemainingToSpawn <= 0) return;
+
             _enemySpawnTimer -= dt;
             if (_enemySpawnTimer > 0) return;
 
@@ -229,14 +295,19 @@ namespace Win2D.BattleTank
             for (int i = 0; i < _tanks.Count; i++)
                 if (_tanks[i].Alive && !_tanks[i].IsPlayer) aliveEnemies++;
 
-            if (_enemiesRemaining > 0 && aliveEnemies < 4)
+            if (aliveEnemies < 4)
             {
                 var spawn = _enemySpawns[_rng.Next(_enemySpawns.Length)];
                 var enemy = Tank.CreateEnemy(spawn);
+
+                // NEW: colorful enemies
+                enemy.BodyColor = EnemyColors.Pick(_rng);
+                enemy.AccentColor = EnemyColors.AccentFor(enemy.BodyColor);
+
                 if (!_map.IsRectBlocked(enemy.Bounds) && !AnyTankIntersects(enemy.Bounds))
                 {
                     _tanks.Add(enemy);
-                    _enemiesRemaining--;
+                    _enemiesRemainingToSpawn--;
                 }
             }
 
@@ -255,9 +326,8 @@ namespace Win2D.BattleTank
         {
             float ts = _map.TileSize;
 
-            // Spawn ở gần đáy, lệch phải 1 ô so với base để bắn lên không cắt vào base
-            float spawnX = ts * (_map.Width / 2f + 0.5f);  // 13.5 tiles => tâm ô cột 13
-            float spawnY = _map.WorldSize.Y - ts * 0.5f;   // sát đáy nhưng không chạm biên
+            float spawnX = ts * (_map.Width / 2f + 0.5f);
+            float spawnY = _map.WorldSize.Y - ts * 0.5f;
 
             _player = Tank.CreatePlayer(new Vector2(spawnX, spawnY));
 
@@ -402,14 +472,23 @@ namespace Win2D.BattleTank
 
             // Overlay text
             ds.Transform = Matrix3x2.Identity;
+
             if (_paused)
-            {
                 ds.DrawText("PAUSED (Esc)", 18, 70, Colors.White);
-            }
-            if (_gameOver)
+
+            if (_levelWon)
             {
-                ds.DrawText("GAME OVER (Enter để chơi lại)", 18, 96, Colors.OrangeRed);
+                string msg = Level < TotalLevels
+                    ? $"VICTORY!  (Enter -> Level {Level + 1})"
+                    : "VICTORY!  (Enter -> ALL CLEAR)";
+                ds.DrawText(msg, 18, 96, Colors.White);
             }
+
+            if (_gameCleared)
+                ds.DrawText("ALL CLEAR! (Enter để chơi lại)", 18, 96, Colors.DeepSkyBlue);
+
+            if (_gameOver)
+                ds.DrawText("GAME OVER (Enter để chơi lại)", 18, 96, Colors.OrangeRed);
 
             ds.Transform = Matrix3x2.Identity;
         }
