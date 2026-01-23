@@ -52,10 +52,11 @@ namespace Win2D.BattleTank
             BuildUI();
             Content = _root;
 
-            _swapChainPanel.Loaded += (_, __) =>
+            _swapChainPanel.Loaded += async (_, __) =>
             {
                 _device = CanvasDevice.GetSharedDevice();
-                _engine.ResetToLevel1();
+                await GameAssets.LoadAsync(_device);
+_engine.ResetToLevel1();
                 _lastTicks = _clock.ElapsedTicks;
 
                 EnsureSwapChain();
@@ -63,6 +64,7 @@ namespace Win2D.BattleTank
 
                 Microsoft.UI.Xaml.Media.CompositionTarget.Rendering += OnRendering;
                 Closed += (_, __) => Cleanup();
+            
             };
         }
 

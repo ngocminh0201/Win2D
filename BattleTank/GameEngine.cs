@@ -2,6 +2,7 @@ using Microsoft.Graphics.Canvas;
 using Microsoft.UI;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Numerics;
 using Windows.UI;
 
@@ -443,6 +444,7 @@ namespace Win2D.BattleTank
 
         public void Render(CanvasDrawingSession ds, Vector2 surfaceSize)
         {
+            Debug.WriteLine("Renderr...");
             // Fit world to panel (letterbox)
             Vector2 world = _map.WorldSize;
             float scale = MathF.Min(surfaceSize.X / world.X, surfaceSize.Y / world.Y);
