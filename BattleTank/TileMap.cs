@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
+using Windows.Foundation;
 using Windows.UI;
 
 namespace Win2D.BattleTank
@@ -370,14 +371,35 @@ namespace Win2D.BattleTank
                         case TileKind.Brick:
                             foreach (var q in tile.BrickQuadrants(TileSize, x, y))
                             {
-                                ds.FillRectangle(q.X, q.Y, q.W, q.H, Color.FromArgb(255, 168, 72, 42));
-                                ds.DrawRectangle(q.X, q.Y, q.W, q.H, Color.FromArgb(140, 0, 0, 0), 1);
+                                var img = GameAssets.Brick;
+                                if (img is not null)
+                                {
+                                    ds.DrawImage(img, new Rect(q.X, q.Y, q.W, q.H));
+                                    // thin outline to keep grid readable
+                                    ds.DrawRectangle(q.X, q.Y, q.W, q.H, Color.FromArgb(90, 0, 0, 0), 1);
+                                }
+                                else
+                                {
+                                    ds.FillRectangle(q.X, q.Y, q.W, q.H, Color.FromArgb(255, 168, 72, 42));
+                                    ds.DrawRectangle(q.X, q.Y, q.W, q.H, Color.FromArgb(140, 0, 0, 0), 1);
+                                }
                             }
                             break;
 
                         case TileKind.Steel:
-                            ds.FillRectangle(r.X, r.Y, r.W, r.H, Color.FromArgb(255, 140, 150, 165));
-                            ds.DrawRectangle(r.X + 2, r.Y + 2, r.W - 4, r.H - 4, Color.FromArgb(120, 0, 0, 0), 2);
+                            {
+                                var img = GameAssets.Steel;
+                                if (img is not null)
+                                {
+                                    ds.DrawImage(img, new Rect(r.X, r.Y, r.W, r.H));
+                                    ds.DrawRectangle(r.X, r.Y, r.W, r.H, Color.FromArgb(120, 0, 0, 0), 2);
+                                }
+                                else
+                                {
+                                    ds.FillRectangle(r.X, r.Y, r.W, r.H, Color.FromArgb(255, 140, 150, 165));
+                                    ds.DrawRectangle(r.X + 2, r.Y + 2, r.W - 4, r.H - 4, Color.FromArgb(120, 0, 0, 0), 2);
+                                }
+                            }
                             break;
 
                         case TileKind.Water:

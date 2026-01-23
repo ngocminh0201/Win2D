@@ -1,12 +1,17 @@
 using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.Text;
 using Microsoft.UI;
 using System;
 using System.Numerics;
+using Windows.Foundation;
 using Windows.UI;
 
 namespace Win2D.BattleTank
 {
     public enum Team { Player, Enemy }
+
+    // 3 enemy variants (different firing acceleration)
+    public enum EnemyKind { Type1, Type2, Type3 }
 
     public enum TankDir { Up, Right, Down, Left }
 
@@ -57,7 +62,17 @@ namespace Win2D.BattleTank
         }
     }
 
-    public struct Tank
+    internal static class TextStyles
+    {
+        public static readonly CanvasTextFormat EnemyKind = new()
+        {
+            FontSize = 10,
+            HorizontalAlignment = CanvasHorizontalAlignment.Center,
+            VerticalAlignment = CanvasVerticalAlignment.Center
+        };
+    }
+
+    struct Tank
     {
         public static float Size => 22f;
         public static float Half => Size * 0.5f;
@@ -68,6 +83,10 @@ namespace Win2D.BattleTank
         public bool Alive;
         public bool IsPlayer;
         public Team Team;
+        public EnemyKind Kind;
+
+        // time alive (used to ramp enemy fire rate)
+        public float Age;
 
         public Vector2 Pos;   // center
         public Vector2 Vel;
@@ -93,6 +112,8 @@ namespace Win2D.BattleTank
             Alive = true,
             IsPlayer = true,
             Team = Team.Player,
+            Kind = EnemyKind.Type1,
+            Age = 0,
             Pos = center,
             Dir = TankDir.Up,
             Speed = 120f,
@@ -109,6 +130,8 @@ namespace Win2D.BattleTank
             Alive = true,
             IsPlayer = false,
             Team = Team.Enemy,
+            Kind = EnemyKind.Type1,
+            Age = 0,
             Pos = center,
             Dir = TankDir.Down,
             Speed = 90f,
@@ -142,6 +165,7 @@ namespace Win2D.BattleTank
 
         public void Update(float dt)
         {
+            Age += dt;
             if (ShootCooldown > 0) ShootCooldown -= dt;
         }
 
@@ -165,6 +189,18 @@ namespace Win2D.BattleTank
 
             // direction mark
             ds.FillCircle(Pos + forward * 6f, 2.2f, accent);
+
+            // show enemy kind (1/2/3) so you can see the new variants
+            if (!IsPlayer)
+            {
+                string k = Kind switch
+                {
+                    EnemyKind.Type1 => "1",
+                    EnemyKind.Type2 => "2",
+                    _ => "3",
+                };
+                ds.DrawText(k, new Rect(r.X, r.Y, r.W, r.H), Colors.White, TextStyles.EnemyKind);
+            }
         }
     }
 
@@ -175,6 +211,11 @@ namespace Win2D.BattleTank
         public Vector2 Pos; // center
         public TankDir Dir;
 
+        // Visual: draw bullet as a large digit (3 or 6) so it's very clear.
+        // NOTE: Collision size stays small to keep gameplay stable.
+        public int Digit;
+
+        // Physics/collision size (keep small)
         public static float Size => 6f;
         public static float Half => Size * 0.5f;
         public float Speed;
@@ -187,6 +228,7 @@ namespace Win2D.BattleTank
             Pos = pos,
             Dir = dir,
             Team = team,
+            Digit = team == Team.Player ? 3 : 6,
             Speed = 420f
         };
 
@@ -197,8 +239,42 @@ namespace Win2D.BattleTank
 
         public void Draw(CanvasDrawingSession ds)
         {
-            var r = Bounds;
-            ds.FillRoundedRectangle(r.X, r.Y, r.W, r.H, 2, 2, Team == Team.Player ? Colors.White : Colors.Orange);
+            // Visual size: "to bằng 4 viên gạch" (map tileSize is 28 -> 2 tiles = 56).
+            // If you ever change TileSize, update this too.
+            float visualSize = 26f;
+            float half = visualSize * 0.5f;
+
+            var vr = new RectF(Pos.X - half, Pos.Y - half, visualSize, visualSize);
+            var rect = new Rect(vr.X, vr.Y, vr.W, vr.H);
+
+            // Background so the number reads on any map.
+            var bg = Team == Team.Player
+                ? Color.FromArgb(210, 10, 220, 120)
+                : Color.FromArgb(210, 255, 165, 70);
+            ds.FillRoundedRectangle(vr.X, vr.Y, vr.W, vr.H, 10, 10, bg);
+            ds.DrawRoundedRectangle(vr.X, vr.Y, vr.W, vr.H, 10, 10, Color.FromArgb(220, 0, 0, 0), 3);
+
+            // Digit centered, keep aspect (text won't be stretched).
+            var fmt = new CanvasTextFormat
+            {
+                FontFamily = "Segoe UI",
+                FontSize = visualSize * 0.78f,
+                HorizontalAlignment = CanvasHorizontalAlignment.Center,
+                VerticalAlignment = CanvasVerticalAlignment.Center
+            };
+
+            string s = (Digit == 6) ? "63" : "36";
+
+            // Simple outline: draw several offset shadows in black.
+            var outline = Color.FromArgb(230, 0, 0, 0);
+            float o = 2.2f;
+            ds.DrawText(s, new Rect(rect.X - o, rect.Y, rect.Width, rect.Height), outline, fmt);
+            ds.DrawText(s, new Rect(rect.X + o, rect.Y, rect.Width, rect.Height), outline, fmt);
+            ds.DrawText(s, new Rect(rect.X, rect.Y - o, rect.Width, rect.Height), outline, fmt);
+            ds.DrawText(s, new Rect(rect.X, rect.Y + o, rect.Width, rect.Height), outline, fmt);
+
+            // Fill text
+            ds.DrawText(s, rect, Colors.White, fmt);
         }
     }
 

@@ -8,9 +8,14 @@ using Microsoft.UI.Xaml.Media;
 using System;
 using System.Diagnostics;
 using System.Numerics;
+using Windows.Media.Core;
+using Windows.Media.Playback;
 using Windows.Foundation;
 using Windows.System;
 using Windows.UI;
+using Microsoft.UI.Xaml.Documents;
+using Windows.UI.Text;
+using Microsoft.UI.Text;
 
 namespace Win2D.BattleTank
 {
@@ -20,6 +25,14 @@ namespace Win2D.BattleTank
         private readonly Grid _hud = new();
         private readonly CanvasSwapChainPanel _swapChainPanel = new();
         private readonly TextBox _keySink = new();
+
+        // GameOver video layer
+        private readonly Grid _videoLayer = new();
+        private readonly MediaPlayerElement _videoPlayer = new();
+        private readonly TextBlock _videoHint = new();
+
+        private MediaPlayer? _mediaPlayer;
+        private bool _showingGameOverVideo;
 
         private readonly TextBlock _scoreText = new();
         private readonly TextBlock _livesText = new();
@@ -52,11 +65,14 @@ namespace Win2D.BattleTank
             BuildUI();
             Content = _root;
 
-            _swapChainPanel.Loaded += (_, __) =>
+            _swapChainPanel.Loaded += async (_, __) =>
             {
                 _device = CanvasDevice.GetSharedDevice();
+                await GameAssets.LoadAsync(_device);
                 _engine.ResetToLevel1();
                 _lastTicks = _clock.ElapsedTicks;
+
+                InitGameOverVideo();
 
                 EnsureSwapChain();
                 HookInput();
@@ -108,6 +124,29 @@ namespace Win2D.BattleTank
 
             playfield.Children.Add(_swapChainPanel);
 
+            // GameOver video overlay
+            _videoLayer.Visibility = Visibility.Collapsed;
+            _videoLayer.Background = new SolidColorBrush(Color.FromArgb(255, 0, 0, 0));
+
+            _videoPlayer.AreTransportControlsEnabled = false;
+            _videoPlayer.Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform;
+            _videoPlayer.HorizontalAlignment = HorizontalAlignment.Stretch;
+            _videoPlayer.VerticalAlignment = VerticalAlignment.Stretch;
+
+            _videoHint.Text = "MÀY THUA RỒI\nMày bị phạt nghe bài ca này kkkk";
+            _videoHint.Foreground = new SolidColorBrush(Colors.Orange);
+            _videoHint.FontSize = 24;
+            _videoHint.FontWeight = FontWeights.Bold;
+            _videoHint.Opacity = 1;
+            _videoHint.HorizontalAlignment = HorizontalAlignment.Center;
+            _videoHint.VerticalAlignment = VerticalAlignment.Center;
+            _videoHint.Margin = new Thickness(0, 0, 0, 28);
+            _videoHint.TextAlignment = TextAlignment.Center;
+
+            _videoLayer.Children.Add(_videoPlayer);
+            _videoLayer.Children.Add(_videoHint);
+            playfield.Children.Add(_videoLayer);
+
             // Key sink overlay (focusable)
             _keySink.Opacity = 0.01; // gần như trong suốt nhưng vẫn nhận input
             _keySink.Background = new SolidColorBrush(Colors.Transparent);
@@ -127,6 +166,25 @@ namespace Win2D.BattleTank
 
             Grid.SetRow(playfield, 1);
             _root.Children.Add(playfield);
+        }
+
+        private void InitGameOverVideo()
+        {
+            // Prepare MediaPlayer for GameOver scene
+            _mediaPlayer?.Dispose();
+            _mediaPlayer = new MediaPlayer
+            {
+                IsLoopingEnabled = true,
+                AutoPlay = false,
+                Volume = 1.0,
+            };
+
+            // Video must be added to project as: Assets/thanhhoa.mp4
+            _mediaPlayer.Source = MediaSource.CreateFromUri(new Uri("ms-appx:///Assets/thanhhoa.mp4"));
+
+            // NOTE (WinUI 3): MediaPlayerElement.MediaPlayer is read-only.
+            // Use SetMediaPlayer(...) to attach our MediaPlayer instance.
+            _videoPlayer.SetMediaPlayer(_mediaPlayer);
         }
 
         private static void SetupHudText(TextBlock tb, string text, int col)
@@ -159,7 +217,17 @@ namespace Win2D.BattleTank
 
             // One-shot keys
             if (e.Key == VirtualKey.Escape) _engine.TogglePause();
-            if (e.Key == VirtualKey.Enter) _engine.HandleEnter();
+            if (e.Key == VirtualKey.Enter)
+            {
+                if (_showingGameOverVideo)
+                {
+                    HideGameOverVideoAndRestart();
+                }
+                else
+                {
+                    _engine.HandleEnter();
+                }
+            }
 
             e.Handled = true;
         }
@@ -201,6 +269,9 @@ namespace Win2D.BattleTank
         {
             if (_swapChain is null) return;
 
+            // If we are showing the GameOver video, skip game update/render.
+            if (_showingGameOverVideo) return;
+
             // dt
             long now = _clock.ElapsedTicks;
             double dt = (now - _lastTicks) / (double)Stopwatch.Frequency;
@@ -219,6 +290,13 @@ namespace Win2D.BattleTank
                 steps++;
             }
 
+            // Transition to GameOver video scene
+            if (_engine.GameOver && !_showingGameOverVideo)
+            {
+                ShowGameOverVideo();
+                return;
+            }
+
             using (var ds = _swapChain.CreateDrawingSession(Color.FromArgb(255, 8, 10, 18)))
             {
                 _engine.Render(ds, _swapChain.Size.ToVector2());
@@ -228,6 +306,56 @@ namespace Win2D.BattleTank
             _swapChain.Present(1);
 
             UpdateHud(dt);
+        }
+
+        private void ShowGameOverVideo()
+        {
+            _showingGameOverVideo = true;
+
+            // Hide HUD + game surface and show video
+            _hud.Visibility = Visibility.Collapsed;
+            _swapChainPanel.Visibility = Visibility.Collapsed;
+            _videoLayer.Visibility = Visibility.Visible;
+
+            // Keep key focus for Enter
+            _keySink.Focus(FocusState.Programmatic);
+
+            try
+            {
+                _mediaPlayer?.Play();
+            }
+            catch
+            {
+                // If video fails to play (missing asset/codec), still show hint so user can press Enter.
+            }
+        }
+
+        private void HideGameOverVideoAndRestart()
+        {
+            try
+            {
+                _mediaPlayer?.Pause();
+                if (_mediaPlayer is not null)
+                {
+                    // Ensure we restart from the beginning next time.
+                    _mediaPlayer.PlaybackSession.Position = TimeSpan.Zero;
+                    _mediaPlayer.PlaybackSession.PlaybackRate = 1.0;
+                }
+            }
+            catch { }
+
+            _videoLayer.Visibility = Visibility.Collapsed;
+            _swapChainPanel.Visibility = Visibility.Visible;
+            _hud.Visibility = Visibility.Visible;
+
+            _showingGameOverVideo = false;
+            _engine.ResetToLevel1();
+
+            // Reset timing accumulator to avoid a big dt spike on return
+            _accumulator = 0;
+            _lastTicks = _clock.ElapsedTicks;
+
+            _keySink.Focus(FocusState.Programmatic);
         }
 
         private void UpdateHud(double dt)
@@ -257,6 +385,11 @@ namespace Win2D.BattleTank
 
             _swapChain?.Dispose();
             _swapChain = null;
+
+            try { _videoPlayer.SetMediaPlayer(null); } catch { }
+
+            _mediaPlayer?.Dispose();
+            _mediaPlayer = null;
 
             _keySink.PreviewKeyDown -= OnKeyDown;
             _keySink.PreviewKeyUp -= OnKeyUp;

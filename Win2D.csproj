@@ -13,7 +13,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="Assets\cocrau.jpg" />
+    <None Remove="Assets\nem.jpeg" />
     <None Remove="Assets\ProgressFrames.jpg" />
+    <None Remove="Assets\rauma.webp" />
+    <None Remove="Assets\thanhhoa.mp4" />
     <None Remove="ProgresCircle\ProgressCircle.xaml" />
     <None Remove="Windows\ClippingWindow.xaml" />
     <None Remove="Windows\GradientWindow.xaml" />
