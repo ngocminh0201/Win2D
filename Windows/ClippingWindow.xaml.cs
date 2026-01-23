@@ -141,15 +141,20 @@ namespace Win2D.Windows
             {
                 mds.Clear(Colors.Transparent);
 
-                // 1) chữ "MASK" làm vùng hiện
+                // 1) 2 chữ "MASK" cạnh nhau
                 var textRect = new Rect(0, 0, rightRect.Width, rightRect.Height);
-                mds.DrawText("MASK",
-                    (float)textRect.X + (float)textRect.Width / 2f,
-                    (float)textRect.Y + (float)textRect.Height / 2f - 10,
-                    Colors.White, _maskTextFormat);
+                float y = (float)textRect.Y + (float)textRect.Height / 2f - 10;
+
+                // đặt 2 vị trí theo 2/5 và 3/5 chiều ngang để nhìn “cạnh nhau” rõ ràng
+                float xLeft = (float)textRect.X + (float)textRect.Width * 0.30f;
+                float xRight = (float)textRect.X + (float)textRect.Width * 0.70f;
+
+                mds.DrawText("MASK", xLeft, y, Color.FromArgb(80, 255, 0, 0), _maskTextFormat);
+                mds.DrawText("MASK", xRight, y, Color.FromArgb(255, 255, 0, 0), _maskTextFormat);
+
 
                 // 2) thêm 1 vòng tròn mềm bằng radial gradient alpha (để thấy “mask” không chỉ là hình cứng)
-                var c = new Vector2((float)rightRect.Width * 0.78f, (float)rightRect.Height * 0.68f);
+                var c = new Vector2((float)rightRect.Width * 0.78f, (float)rightRect.Height * 0.78f);
                 using var radial = new Microsoft.Graphics.Canvas.Brushes.CanvasRadialGradientBrush(ds.Device,
                     new[]
                     {
