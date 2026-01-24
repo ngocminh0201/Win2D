@@ -51,5 +51,11 @@ namespace Win2D
             var window = new ProgresCircle.ProgressCircle();
             window.Activate();
         }
+
+        private void Button_Click_6(object sender, RoutedEventArgs e)
+        {
+            var window = new Windows.CommandListsWindow();
+            window.Activate();
+        }
     }
 }

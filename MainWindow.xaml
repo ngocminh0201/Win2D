@@ -27,6 +27,7 @@
             <Button Click="Button_Click_1" Content="Primitive shapes" />
             <Button Click="Button_Click_2" Content="Gradient" />
             <Button Click="Button_Click_4" Content="Clipping and Masking" />
+            <Button Click="Button_Click_6" Content="Command Lists" />
         </StackPanel>
 
         <StackPanel

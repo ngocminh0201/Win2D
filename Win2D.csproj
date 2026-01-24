@@ -20,6 +20,7 @@
     <None Remove="Assets\thanhhoa.mp4" />
     <None Remove="ProgresCircle\ProgressCircle.xaml" />
     <None Remove="Windows\ClippingWindow.xaml" />
+    <None Remove="Windows\CommandListsWindow.xaml" />
     <None Remove="Windows\GradientWindow.xaml" />
     <None Remove="Windows\PrimitiveShapesWindow.xaml" />
     <None Remove="Windows\StartUpWindow.xaml" />
@@ -57,6 +58,11 @@
     <Content Update="Assets\ProgressFrames.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Windows\CommandListsWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="Windows\ClippingWindow.xaml">
