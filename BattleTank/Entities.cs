@@ -10,6 +10,9 @@ namespace Win2D.BattleTank
 {
     public enum Team { Player, Enemy }
 
+    // 3 enemy variants (different firing acceleration)
+    public enum EnemyKind { Type1, Type2, Type3 }
+
     public enum TankDir { Up, Right, Down, Left }
 
     public static class TankDirExt
@@ -59,7 +62,17 @@ namespace Win2D.BattleTank
         }
     }
 
-    public struct Tank
+    internal static class TextStyles
+    {
+        public static readonly CanvasTextFormat EnemyKind = new()
+        {
+            FontSize = 10,
+            HorizontalAlignment = CanvasHorizontalAlignment.Center,
+            VerticalAlignment = CanvasVerticalAlignment.Center
+        };
+    }
+
+    struct Tank
     {
         public static float Size => 22f;
         public static float Half => Size * 0.5f;
@@ -70,6 +83,10 @@ namespace Win2D.BattleTank
         public bool Alive;
         public bool IsPlayer;
         public Team Team;
+        public EnemyKind Kind;
+
+        // time alive (used to ramp enemy fire rate)
+        public float Age;
 
         public Vector2 Pos;   // center
         public Vector2 Vel;
@@ -95,6 +112,8 @@ namespace Win2D.BattleTank
             Alive = true,
             IsPlayer = true,
             Team = Team.Player,
+            Kind = EnemyKind.Type1,
+            Age = 0,
             Pos = center,
             Dir = TankDir.Up,
             Speed = 120f,
@@ -111,6 +130,8 @@ namespace Win2D.BattleTank
             Alive = true,
             IsPlayer = false,
             Team = Team.Enemy,
+            Kind = EnemyKind.Type1,
+            Age = 0,
             Pos = center,
             Dir = TankDir.Down,
             Speed = 90f,
@@ -144,6 +165,7 @@ namespace Win2D.BattleTank
 
         public void Update(float dt)
         {
+            Age += dt;
             if (ShootCooldown > 0) ShootCooldown -= dt;
         }
 
@@ -167,6 +189,18 @@ namespace Win2D.BattleTank
 
             // direction mark
             ds.FillCircle(Pos + forward * 6f, 2.2f, accent);
+
+            // show enemy kind (1/2/3) so you can see the new variants
+            if (!IsPlayer)
+            {
+                string k = Kind switch
+                {
+                    EnemyKind.Type1 => "1",
+                    EnemyKind.Type2 => "2",
+                    _ => "3",
+                };
+                ds.DrawText(k, new Rect(r.X, r.Y, r.W, r.H), Colors.White, TextStyles.EnemyKind);
+            }
         }
     }
 

@@ -13,17 +13,30 @@
     <Window.SystemBackdrop>
         <MicaBackdrop />
     </Window.SystemBackdrop>
-
     <StackPanel
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
-        Orientation="Vertical"
-        Spacing="15">
-        <Button Click="Button_Click" Content="StartUp" />
-        <Button Click="Button_Click_1" Content="Primitive shapes" />
-        <Button Click="Button_Click_2" Content="Gradient" />
-        <Button Click="Button_Click_4" Content="Clipping and Masking" />
-        <Button Click="Button_Click_3" Content="BattleTank Game" />
-        <Button Click="Button_Click_5" Content="ProgressCircle" />
+        Orientation="Horizontal"
+        Spacing="50">
+        <StackPanel
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Orientation="Vertical"
+            Spacing="15">
+            <Button Click="Button_Click" Content="StartUp" />
+            <Button Click="Button_Click_1" Content="Primitive shapes" />
+            <Button Click="Button_Click_2" Content="Gradient" />
+            <Button Click="Button_Click_4" Content="Clipping and Masking" />
+        </StackPanel>
+
+        <StackPanel
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Orientation="Vertical"
+            Spacing="15">
+            <Button Click="Button_Click_3" Content="BattleTank Game" />
+            <Button Click="Button_Click_5" Content="ProgressCircle" />
+        </StackPanel>
     </StackPanel>
+
 </Window>

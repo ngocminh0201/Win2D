@@ -68,7 +68,7 @@ namespace Win2D.BattleTank
         public void ResetToLevel1()
         {
             Level = 1;
-            Lives = 3;
+            Lives = 1;
             Score = 0;
 
             _paused = false;
@@ -296,10 +296,14 @@ namespace Win2D.BattleTank
             for (int i = 0; i < _tanks.Count; i++)
                 if (_tanks[i].Alive && !_tanks[i].IsPlayer) aliveEnemies++;
 
-            if (aliveEnemies < 4)
+            if (aliveEnemies < 6)
             {
                 var spawn = _enemySpawns[_rng.Next(_enemySpawns.Length)];
                 var enemy = Tank.CreateEnemy(spawn);
+
+                enemy.Kind = PickEnemyKind();
+                enemy.FireTimer = 0.25f + NextEnemyFireInterval(enemy) * 0.35f; // slight delay then start shooting
+
 
                 // NEW: colorful enemies
                 enemy.BodyColor = EnemyColors.Pick(_rng);
@@ -361,7 +365,73 @@ namespace Win2D.BattleTank
             t.Update(dt);
         }
 
-        private void UpdateEnemyTank(ref Tank t, float dt)
+        private EnemyKind PickEnemyKind()
+        {
+            // Weight harder enemies more as levels go up
+            // L1: mostly type1, a few type2, rare type3
+            // Higher levels: more type2/type3
+            double r = _rng.NextDouble();
+            double w3 = Math.Min(0.10 + Level * 0.03, 0.35); // up to 35%
+            double w2 = Math.Min(0.25 + Level * 0.04, 0.50); // up to 50%
+            double w1 = Math.Max(0.0, 1.0 - w2 - w3);
+
+            if (r < w3) return EnemyKind.Type3;
+            if (r < w3 + w2) return EnemyKind.Type2;
+            return EnemyKind.Type1;
+        }
+
+        private float NextEnemyFireInterval(in Tank t)
+        {
+            // Each type ramps up (shoots faster) over time.
+            // We ease from a starting interval range to a faster (smaller) interval range.
+            float age = MathF.Max(0, t.Age);
+
+            // (startMin, startMax, endMin, endMax, accel)
+            float startMin, startMax, endMin, endMax, accel;
+            switch (t.Kind)
+            {
+                default:
+                case EnemyKind.Type1:
+                    startMin = 0.95f; startMax = 1.65f;
+                    endMin = 0.55f; endMax = 0.95f;
+                    accel = 0.08f; // slow ramp
+                    break;
+
+                case EnemyKind.Type2:
+                    startMin = 0.80f; startMax = 1.35f;
+                    endMin = 0.45f; endMax = 0.78f;
+                    accel = 0.11f; // medium ramp
+                    break;
+
+                case EnemyKind.Type3:
+                    startMin = 0.65f; startMax = 1.10f;
+                    endMin = 0.32f; endMax = 0.60f;
+                    accel = 0.16f; // fast ramp
+                    break;
+            }
+
+            // k: 0 -> 1 over time
+            float k = 1f - MathF.Exp(-accel * age);
+            float min = startMin + (endMin - startMin) * k;
+            float max = startMax + (endMax - startMax) * k;
+
+            if (max < min) max = min + 0.01f;
+
+            return min + (float)_rng.NextDouble() * (max - min);
+        }
+
+        private double EnemyFireChance(in Tank t)
+        {
+            // Type3 more aggressive
+            return t.Kind switch
+            {
+                EnemyKind.Type1 => 0.55,
+                EnemyKind.Type2 => 0.65,
+                _ => 0.75,
+            };
+        }
+
+        void UpdateEnemyTank(ref Tank t, float dt)
         {
             // Simple AI: change direction sometimes + when blocked
             t.AiTimer -= dt;
@@ -383,8 +453,8 @@ namespace Win2D.BattleTank
             t.FireTimer -= dt;
             if (t.FireTimer <= 0)
             {
-                if (_rng.NextDouble() < 0.55) TryFire(ref t);
-                t.FireTimer = 0.9f + (float)_rng.NextDouble() * 0.9f;
+                if (_rng.NextDouble() < EnemyFireChance(t)) TryFire(ref t);
+                t.FireTimer = NextEnemyFireInterval(t);
             }
 
             t.Update(dt);
@@ -428,7 +498,7 @@ namespace Win2D.BattleTank
                     teamBullets++;
 
             if (t.IsPlayer && teamBullets >= 2) return;
-            if (!t.IsPlayer && teamBullets >= 1) return;
+            if (!t.IsPlayer && teamBullets >= 3) return;
 
             var muzzle = t.Pos + t.Dir.ToUnit() * (Tank.Size * 0.62f);
             var b = Bullet.Create(muzzle, t.Dir, t.Team);
