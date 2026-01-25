@@ -48,18 +48,20 @@ namespace Win2D.BattleTank
             }
 
             // Base + guard bricks
-            PlaceBase();
+            //PlaceBase();
 
             // Text content per level
             if (level == 1)
             {
-                PlaceTextAsBricks("3636", scale: 2, spacing: 1, yTop: 5);
+                PlaceTextAsBricks("36", scale: 2, spacing: 1, yTop: 5);
                 PlaceDecorLevel1();
             }
             else if (level == 2)
             {
-                PlaceTextAsBricks("THANH HOÁ", scale: 1, spacing: 0, yTop: 9);
+                // Map 2: render "THANH" on the first line (centered) and "HOA" on the second line (centered).
+                // Keep the playfield clean: no extra obstacles overlapping the text.
                 PlaceDecorLevel2();
+                PlaceTextLinesAsBricks(new[] { "THANH", "HOA" }, scale: 1, spacing: 2, lineSpacing: 1, yTop: 8);
             }
             else // level 3
             {
@@ -108,6 +110,10 @@ namespace Win2D.BattleTank
             }
 
             Set(bx, by, Tile.Base());
+
+            // Remove the 2 bricks beside the player tank (left/right of the spawn lane)
+            Set(bx - 1, by + 1, Tile.Empty());
+            Set(bx + 1, by + 1, Tile.Empty());
         }
 
         private void CarveSpawnZones()
@@ -160,22 +166,9 @@ namespace Win2D.BattleTank
 
         private void PlaceDecorLevel2()
         {
-            // Ice band (makes movement spicy but still readable)
-            for (int x = 3; x < Width - 3; x++)
-            {
-                if (x % 2 == 0) Set(x, 15, Tile.Ice());
-            }
-
-            // Brick blocks as cover
-            for (int y = 5; y < 12; y += 3)
-            {
-                for (int x = 6; x < Width - 6; x += 10)
-                {
-                    Set(x, y, Tile.BrickFull());
-                    Set(x + 1, y, Tile.BrickFull());
-                    Set(x, y + 1, Tile.BrickFull());
-                }
-            }
+            // Intentionally empty for map 2:
+            // Besides the 4-side steel border and the base guard bricks,
+            // do not place any additional obstacles/tiles that could cover the "THANH HOA" text.
         }
 
         private void PlaceDecorLevel3()
@@ -211,6 +204,78 @@ namespace Win2D.BattleTank
 
             int startX = Math.Max(1, (Width - totalW) / 2);
             int startY = Math.Clamp(yTop, 1, Height - totalH - 2);
+
+            int cursor = 0;
+            for (int i = 0; i < norm.Length; i++)
+            {
+                char ch = norm[i];
+                var glyph = TextRaster.GetGlyph(ch);
+
+                for (int gy = 0; gy < charH; gy++)
+                {
+                    for (int gx = 0; gx < charW; gx++)
+                    {
+                        if (!glyph[gy, gx]) continue;
+
+                        int px = startX + (cursor + gx) * scale;
+                        int py = startY + gy * scale;
+
+                        for (int sy = 0; sy < scale; sy++)
+                            for (int sx = 0; sx < scale; sx++)
+                                Set(px + sx, py + sy, Tile.BrickFull());
+                    }
+                }
+
+                cursor += charW + spacing;
+            }
+        }
+        /// <summary>
+        /// Places multiple text lines made of bricks.
+        /// Both lines share the same center (common centering) so the whole 2-line block feels aligned.
+        /// </summary>
+        private void PlaceTextLinesAsBricks(string[] lines, int scale, int spacing, int lineSpacing, int yTop)
+        {
+            if (lines is null || lines.Length == 0) return;
+
+            int charW = TextRaster.CharWidth;
+            int charH = TextRaster.CharHeight;
+
+            // Normalize and compute each line width in tiles
+            var normLines = new string[lines.Length];
+            var lineWidths = new int[lines.Length];
+            int maxW = 0;
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string norm = TextRaster.Normalize(lines[i] ?? "");
+                normLines[i] = norm;
+
+                int glyphCount = norm.Length;
+                int totalPxW = glyphCount * charW + Math.Max(0, glyphCount - 1) * spacing;
+                int totalW = totalPxW * scale;
+                lineWidths[i] = totalW;
+                if (totalW > maxW) maxW = totalW;
+            }
+
+            int totalH = (lines.Length * charH * scale) + (Math.Max(0, lines.Length - 1) * lineSpacing * scale);
+            int startY = Math.Clamp(yTop, 1, Height - totalH - 2);
+
+            // Common centered block X so both lines share the same visual center.
+            int blockStartX = Math.Max(1, (Width - maxW) / 2);
+
+            for (int li = 0; li < normLines.Length; li++)
+            {
+                // Center each line within the common block, but keep rounding consistent.
+                int lineStartX = blockStartX + Math.Max(0, (maxW - lineWidths[li]) / 2);
+                int lineY = startY + li * (charH * scale + lineSpacing * scale);
+                PlaceTextLineAt(normLines[li], scale, spacing, lineStartX, lineY);
+            }
+        }
+
+        private void PlaceTextLineAt(string norm, int scale, int spacing, int startX, int startY)
+        {
+            int charW = TextRaster.CharWidth;
+            int charH = TextRaster.CharHeight;
 
             int cursor = 0;
             for (int i = 0; i < norm.Length; i++)
@@ -473,10 +538,11 @@ namespace Win2D.BattleTank
 
     file static class TextRaster
     {
-        public const int CharWidth = 5;
+        // 7x7 glyphs (each row is 7 chars). '#': brick, '.': empty
+        public const int CharWidth = 7;
         public const int CharHeight = 7;
 
-        // Return a 7x5 bool glyph.
+        // Return a 7x7 bool glyph.
         public static bool[,] GetGlyph(char c)
         {
             if (!_glyphs.TryGetValue(c, out var rows))
@@ -493,17 +559,22 @@ namespace Win2D.BattleTank
         {
             if (string.IsNullOrWhiteSpace(s)) return "";
 
-            // Remove diacritics (e.g., HOÁ -> HOA)
-            string formD = s.Normalize(NormalizationForm.FormD);
-            var sb = new StringBuilder(formD.Length);
+            // Keep Vietnamese diacritics (e.g., "HÓA").
+            // Normalize to FormC to prefer composed characters (Ó instead of O + combining mark).
+            string formC = s.Normalize(NormalizationForm.FormC);
 
-            foreach (var ch in formD)
+            var sb = new StringBuilder(formC.Length);
+            foreach (var ch in formC)
             {
-                var uc = CharUnicodeInfo.GetUnicodeCategory(ch);
-                if (uc == UnicodeCategory.NonSpacingMark) continue;
+                if (char.IsWhiteSpace(ch)) { sb.Append(' '); continue; }
 
                 char up = char.ToUpperInvariant(ch);
                 if (up == 'Đ') up = 'D';
+
+                // If the input still contains combining marks, drop them.
+                var cat = CharUnicodeInfo.GetUnicodeCategory(up);
+                if (cat == UnicodeCategory.NonSpacingMark) continue;
+
                 sb.Append(up);
             }
 
@@ -515,98 +586,102 @@ namespace Win2D.BattleTank
             // digits
             ['3'] = new[]
             {
-                "#####",
-                "....#",
-                "....#",
-                "#####",
-                "....#",
-                "....#",
-                "#####",
+                "#######",
+                "......#",
+                "......#",
+                "#######",
+                "......#",
+                "......#",
+                "#######",
             },
             ['6'] = new[]
             {
-                "#####",
-                "#....",
-                "#....",
-                "#####",
-                "#...#",
-                "#...#",
-                "#####",
+                "#######",
+                "#......",
+                "#......",
+                "#######",
+                "#.....#",
+                "#.....#",
+                "#######",
             },
 
-            // letters used in "THANH HOA"
+            // letters used in "THANH HÓA"
             ['T'] = new[]
             {
-                "#####",
-                "..#..",
-                "..#..",
-                "..#..",
-                "..#..",
-                "..#..",
-                "..#..",
+                "#######",
+                "...#...",
+                "...#...",
+                "...#...",
+                "...#...",
+                "...#...",
+                "...#...",
             },
             ['H'] = new[]
             {
-                "#...#",
-                "#...#",
-                "#...#",
-                "#####",
-                "#...#",
-                "#...#",
-                "#...#",
+                "#.....#",
+                "#.....#",
+                "#.....#",
+                "#######",
+                "#.....#",
+                "#.....#",
+                "#.....#",
             },
             ['A'] = new[]
             {
-                ".###.",
-                "#...#",
-                "#...#",
-                "#####",
-                "#...#",
-                "#...#",
-                "#...#",
+                "..###..",
+                ".#...#.",
+                "#.....#",
+                "#######",
+                "#.....#",
+                "#.....#",
+                "#.....#",
             },
+
+            // N: make the diagonal \ longer / more natural
             ['N'] = new[]
             {
-                "#...#",
-                "##..#",
-                "#.#.#",
-                "#..##",
-                "#...#",
-                "#...#",
-                "#...#",
+                "#.....#",
+                "##....#",
+                "#.#...#",
+                "#..#..#",
+                "#...#.#",
+                "#....##",
+                "#.....#",
             },
+
             ['O'] = new[]
             {
-                ".###.",
-                "#...#",
-                "#...#",
-                "#...#",
-                "#...#",
-                "#...#",
-                ".###.",
+                "..###..",
+                ".#...#.",
+                "#.....#",
+                "#.....#",
+                "#.....#",
+                ".#...#.",
+                "..###..",
             },
 
             [' '] = new[]
             {
-                ".....",
-                ".....",
-                ".....",
-                ".....",
-                ".....",
-                ".....",
-                ".....",
+                ".......",
+                ".......",
+                ".......",
+                ".......",
+                ".......",
+                ".......",
+                ".......",
             },
 
             ['?'] = new[]
             {
-                "#####",
-                "....#",
-                "...#.",
-                "..#..",
-                "..#..",
-                ".....",
-                "..#..",
+                "#######",
+                "......#",
+                "....##.",
+                "...#...",
+                "...#...",
+                ".......",
+                "...#...",
             },
         };
     }
+
 }
