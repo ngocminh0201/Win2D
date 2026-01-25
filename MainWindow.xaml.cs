@@ -57,5 +57,17 @@ namespace Win2D
             var window = new Windows.CommandListsWindow();
             window.Activate();
         }
+
+        private void Button_Click_7(object sender, RoutedEventArgs e)
+        {
+            var window = new Windows.InkStrokesWindow();
+            window.Activate();
+        }
+
+        private void Button_Click_8(object sender, RoutedEventArgs e)
+        {
+            var window = new Windows.SVGImageWindow();
+            window.Activate();
+        }
     }
 }

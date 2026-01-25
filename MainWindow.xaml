@@ -28,6 +28,8 @@
             <Button Click="Button_Click_2" Content="Gradient" />
             <Button Click="Button_Click_4" Content="Clipping and Masking" />
             <Button Click="Button_Click_6" Content="Command Lists" />
+            <Button Click="Button_Click_7" Content="Ink Strokes" />
+            <Button Click="Button_Click_8" Content="SVG Image" />
         </StackPanel>
 
         <StackPanel

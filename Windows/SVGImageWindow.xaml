@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Window
+    x:Class="Win2D.Windows.SVGImageWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:Win2D.Windows"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="SVGImageWindow"
+    mc:Ignorable="d">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid Padding="16" ColumnSpacing="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!--  LEFT: XAML Image renders SVG  -->
+        <Border
+            Grid.Column="0"
+            Padding="12"
+            BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="1"
+            CornerRadius="12">
+            <StackPanel Spacing="10">
+                <TextBlock
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    Text="Left: XAML &lt;Image&gt; (SvgImageSource)" />
+                <TextBlock
+                    Opacity="0.75"
+                    Text="Nét khi scale, nhưng khó làm tint/mask/effects kiểu pipeline."
+                    TextWrapping="WrapWholeWords" />
+                <Viewbox Height="420" Stretch="Uniform">
+                    <Image x:Name="SvgImage" />
+                </Viewbox>
+            </StackPanel>
+        </Border>
+
+        <!--  RIGHT: Win2D Canvas draws + manipulates  -->
+        <Border
+            Grid.Column="1"
+            Padding="12"
+            BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="1"
+            CornerRadius="12">
+            <StackPanel Spacing="10">
+                <TextBlock
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    Text="Right: Win2D CanvasControl (draw + manipulate)" />
+                <TextBlock
+                    Opacity="0.75"
+                    Text="Demo: (1) vẽ SVG thường; (2) tint+shadow; (3) alpha-mask reveal animation."
+                    TextWrapping="WrapWholeWords" />
+
+                <canvas:CanvasControl
+                    x:Name="MyCanvas"
+                    Height="420"
+                    ClearColor="Transparent"
+                    CreateResources="MyCanvas_CreateResources"
+                    Draw="MyCanvas_Draw" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

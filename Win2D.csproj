@@ -22,8 +22,10 @@
     <None Remove="Windows\ClippingWindow.xaml" />
     <None Remove="Windows\CommandListsWindow.xaml" />
     <None Remove="Windows\GradientWindow.xaml" />
+    <None Remove="Windows\InkStrokesWindow.xaml" />
     <None Remove="Windows\PrimitiveShapesWindow.xaml" />
     <None Remove="Windows\StartUpWindow.xaml" />
+    <None Remove="Windows\SVGImageWindow.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -58,6 +60,16 @@
     <Content Update="Assets\ProgressFrames.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Windows\SVGImageWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Windows\InkStrokesWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="Windows\CommandListsWindow.xaml">
