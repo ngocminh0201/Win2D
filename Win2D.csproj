@@ -26,6 +26,8 @@
     <None Remove="Windows\PrimitiveShapesWindow.xaml" />
     <None Remove="Windows\StartUpWindow.xaml" />
     <None Remove="Windows\SVGImageWindow.xaml" />
+    <None Remove="Windows\Text\TextRenderingWindow.xaml" />
+    <None Remove="Windows\Text\TextToGeometryWindow.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -60,6 +62,11 @@
     <Content Update="Assets\ProgressFrames.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Windows\Text\TextToGeometryWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="Windows\SVGImageWindow.xaml">
@@ -98,6 +105,11 @@
   </ItemGroup>
   <ItemGroup>
     <Page Update="ProgresCircle\ProgressCircle.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Windows\Text\TextRenderingWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>

@@ -1,5 +1,6 @@
 ﻿using Microsoft.UI.Xaml;
 using Win2D.BattleTank;
+using Win2D.Windows.Text;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -67,6 +68,18 @@ namespace Win2D
         private void Button_Click_8(object sender, RoutedEventArgs e)
         {
             var window = new Windows.SVGImageWindow();
+            window.Activate();
+        }
+
+        private void Button_Click_9(object sender, RoutedEventArgs e)
+        {
+            var window = new TextRenderingWindow();
+            window.Activate();
+        }
+
+        private void Button_Click_10(object sender, RoutedEventArgs e)
+        {
+            var window = new TextToGeometryWindow();
             window.Activate();
         }
     }

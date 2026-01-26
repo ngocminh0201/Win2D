@@ -62,7 +62,7 @@ namespace Win2D.Windows
 
             // ===== 3) Text bình thường + chính text đó biến thành geometry =====
             // 3a) Text render bình thường (layout)
-            ds.DrawTextLayout(_textLayout, 40, 280, Colors.Orange);
+            ds.DrawText("Vũ.", 40, 280, Colors.Orange, _textFormat);
 
             // 3b) Text -> geometry (fill/stroke như shape)
             ds.FillGeometry(_textGeometry, 40, 360, Colors.DeepSkyBlue);

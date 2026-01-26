@@ -40,6 +40,15 @@
             <Button Click="Button_Click_3" Content="BattleTank Game" />
             <Button Click="Button_Click_5" Content="ProgressCircle" />
         </StackPanel>
+
+        <StackPanel
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Orientation="Vertical"
+            Spacing="15">
+            <Button Click="Button_Click_9" Content="Text Rendering" />
+            <Button Click="Button_Click_10" Content="Text To Geometry" />
+        </StackPanel>
     </StackPanel>
 
 </Window>
